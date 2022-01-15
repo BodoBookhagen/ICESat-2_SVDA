@@ -13,10 +13,9 @@ Here is a code-snippet to install the required packages into an conda environmen
 conda create -y -n icesat2 -c conda-forge ipython numpy python \
   ipython matplotlib h5py pandas scipy pyproj pip fiona shapely \
   jupyter ipywidgets gdal tqdm scikit-learn weightedstats \
-  geopandas cartopy
+  geopandas cartopy plotly
 conda activate icesat2
-conda install -y mpi4py
-pip install tables laspy pyGEDI requests
+pip install tables laspy requests
 ```
 
 You can also add this conda environment to be recognized by the Jupyter Notebooks:
@@ -30,8 +29,10 @@ In addition, you may want to install the python tools for obtaining and working 
 ```
 cd ~
 conda activate icesat2
-conda install -c conda-forge openmpi-mpicc
-conda install -c conda-forge c-compiler compilers cxx-compiler
+pip install pyGEDI
+conda install -y mpi4py
+conda install -c -y conda-forge openmpi-mpicc
+conda install -c -y conda-forge c-compiler compilers cxx-compiler
 git clone https://github.com/tsutterley/read-ICESat-2.git
 cd read-ICESat-2
 export OMPI_MCA_opal_cuda_support=true
