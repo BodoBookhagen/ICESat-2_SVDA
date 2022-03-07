@@ -11,7 +11,7 @@ We provide a set of Jupyter Notebooks that will guide through the processing ste
 
 ![](figs/JupyterNotebook_CanopyHeight_teaser.png)
 
-### Installation of a conda environment
+### Installation of a dedicated conda environment
 In order to run the codes and follow the steps in the Jupyter Notebooks, you will need to have installed several additional packages. This can be done through [miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/).
 
 Here is a code-snippet to install the required packages into an conda environment called `icesat2`:
@@ -28,7 +28,7 @@ pip install tables laspy requests
 Some of these modules are not required for running the code (for example, `cartopy` and `plotly`), but they are useful when interactively exploring the data.
 
 
-You can also add this conda environment to be recognized by the Jupyter Notebooks:
+You can also add this conda environment to be recognized by Jupyter Notebooks:
 ```
 python -m ipykernel install --user --name=icesat2
 ```
@@ -54,4 +54,14 @@ python setup.py install
 cd ~
 ```
 
-Now you should be ready to run the
+### More additional packages
+If you plan to use Google Earth Engine, you will need to install their API:
+```
+conda activate icesat2
+conda install -c conda-forge earthengine-api geemap
+```
+
+*Note that these are generally very large.*
+
+
+Now you should be ready to run the various Jupyter Notebooks and steps.
