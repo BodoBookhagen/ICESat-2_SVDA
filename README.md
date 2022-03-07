@@ -1,10 +1,17 @@
-# ICESat-2_SVDA
+# ICESat-2 SVDA
+This repository contains the python codes and Jupyter Notebooks for the "Sparse Vegetation Detection Algorithm" (SVDA) to process ICESat-2 ATL03 data.
 
-Python codes and Jupyter Notebooks for the "Sparse Vegetation Detection Algorithm" (SVDA) to process ICESat-2 ATL03 data.
+When using the codes from this github environment, please cite:
+Atmani, F., Bookhagen, B., and Smith, T.: **Measuring vegetation heights and their seasonal changes in the western Namibian savanna using spaceborne lidars**
 
-The concept and theoretical background is described in the journal article "Measuring vegetation height and their seasonal changes in western Namibia using spaceborne lidars (GEDI and ICESat-2)"
+Detailed concept and theoretical background information are described in the journal article "Measuring vegetation heights and their seasonal changes in the western Namibian savanna using spaceborne lidars"
 
 ## Jupyter Notebooks
+We provide a set of Jupyter Notebooks that will guide through the processing steps.
+
+![](figs/JupyterNotebook_CanopyHeight_teaser.png)
+
+### Installation of a conda environment
 In order to run the codes and follow the steps in the Jupyter Notebooks, you will need to have installed several additional packages. This can be done through [miniconda](https://docs.conda.io/en/latest/miniconda.html) or [Anaconda](https://www.anaconda.com/).
 
 Here is a code-snippet to install the required packages into an conda environment called `icesat2`:
@@ -18,10 +25,16 @@ conda activate icesat2
 pip install tables laspy requests
 ```
 
+Some of these modules are not required for running the code (for example, `cartopy` and `plotly`), but they are useful when interactively exploring the data.
+
+
 You can also add this conda environment to be recognized by the Jupyter Notebooks:
 ```
 python -m ipykernel install --user --name=icesat2
 ```
+
+### Additional packages for ICESat-2
+**These are not required to run the SVDA classification code, but are helpful when working with ICESat-2 data.**
 
 In addition, you may want to install the python tools for obtaining and working with elevation data from the NASA ICESat-2 mission from github. This relies on MPI/OPENMPI and you may need to make sure to install the correct version of the compilers within conda. Alternatively, you can install the packages to the system. The following snippet works on an Ubuntu 18.04 and 20.04, but should be easily transferable to other systems.
 
@@ -41,4 +54,4 @@ python setup.py install
 cd ~
 ```
 
-Now you should be ready to run
+Now you should be ready to run the
