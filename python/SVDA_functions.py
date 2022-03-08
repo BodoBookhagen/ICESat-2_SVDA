@@ -10,6 +10,8 @@ from scipy.interpolate import interp1d
 from scipy import signal
 from math import tan, pi
 import scipy.spatial as spatial
+
+from SVDA_functions import *
 #from sklearn.preprocessing import StandardScaler
 
 def ATL03_signal_photons(fname, ATL03_output_path, ROI_fname, EPSG_Code, reprocess=False):
@@ -33,6 +35,7 @@ def ATL03_signal_photons(fname, ATL03_output_path, ROI_fname, EPSG_Code, reproce
     and the date and time of the beam.
 
     """
+
     ATL03 = h5py.File(fname,'r')
 
     gtr = [g for g in ATL03.keys() if g.startswith('gt')]
@@ -45,7 +48,7 @@ def ATL03_signal_photons(fname, ATL03_output_path, ROI_fname, EPSG_Code, reproce
     for b in gtr:
         print('Opening %s: %s'%(os.path.basename(fname), b))
         if reprocess==False and os.path.exists(os.path.join(ATL03_output_path,'ATL03_Land_%s_%s.hdf'%('_'.join(os.path.basename(fname).split('_')[1:2]),b))):
-            print('File %s already exists and reprocessing is turned off.'%os.path.join(ATL03_output_path,'ATL03_Land_%s_%s.hdf'%('_'.join(os.path.basename(fname).split('_')[1:2]),b)))
+            print('File %s already exists and reprocessing is turned off.\n'%os.path.join(ATL03_output_path,'ATL03_Land_%s_%s.hdf'%('_'.join(os.path.basename(fname).split('_')[1:2]),b)))
             continue
         attribute_lat_ph = b + '/heights/lat_ph'
         lat_ph = np.asarray(ATL03[attribute_lat_ph]).tolist()
@@ -98,9 +101,9 @@ def ATL03_signal_photons(fname, ATL03_output_path, ROI_fname, EPSG_Code, reproce
         if not os.path.exists(ATL03_output_path):
             os.mkdir(ATL03_output_path)
 
-        #ATL03_df.to_csv('{}_{}.csv'.format(ATL03_files[23:-3], gtr), header=True)
+        #ATL03_df = ATL03_df.convert_dtypes()
         ATL03_df.to_hdf(os.path.join(ATL03_output_path,'ATL03_Land_%s_%s.hdf'%('_'.join(os.path.basename(fname).split('_')[1:2]),b)),
-                        key='%s_%s'%('_'.join(os.path.basename(fname).split('_')[1::])[:-4],b), complevel=7)
+                        key='ATL03_%s_%s'%('_'.join(os.path.basename(fname).split('_')[1::])[:-4],b), complevel=7)
         print('saved to %s'%os.path.join(ATL03_output_path,'ATL03_Land_%s_%s.hdf'%('_'.join(os.path.basename(fname).split('_')[1:2]),b)))
         print()
     ATL03.close()
@@ -120,7 +123,7 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
 
     print('Opening %s: '%os.path.basename(fname), end='')
     if reprocess==False and os.path.exists(os.path.join(ATL03_output_path,'ATL03_PreCanopy_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])) and os.path.exists(os.path.join(ATL03_output_path,'ATL03_Ground_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])):
-        print('Files %s and %s already exist and reprocessing is turned off.'%(os.path.join(ATL03_output_path,'ATL03_PreCanopy_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]),
+        print('Files %s and %s already exist and reprocessing is turned off.\n'%(os.path.join(ATL03_output_path,'ATL03_PreCanopy_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]),
         os.path.join(ATL03_output_path,'ATL03_Ground_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])))
         return
     ATL03_df = pd.read_hdf(fname, mode='r')
@@ -141,6 +144,7 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
     canop = []
     print('Detrending topography and photon-height filtering... ')
     for i in tqdm.tqdm(range(len(rows_left))):
+        # Could add multi-core processing here - either speed up filtering or process each core separately
         df = ATL03_df.where((ATL03_df['alongtrack']>= rows_left[i]) & (ATL03_df['alongtrack'] < rows_right[i]))
         df = df.dropna()
 
@@ -195,7 +199,8 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
 
     # Ground photons dataframe
     median_df = pd.DataFrame({'Latitude': latitude, 'Longitude': longitude, 'alongtrack': along, 'crosstrack': cross,
-                              'Easting': east, 'Northing': north, 'Photon_Height':med})
+                              'Easting': east, 'Northing': north, 'Ground_Height': med})
+    #median_df = median_df.convert_dtypes()
 
     # Saving the final ground photons into hdf file
     if len(median_df) >5:
@@ -207,9 +212,11 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
         if len(Canopy) > 5:
             Canopy = Canopy.where((Canopy['alongtrack'] > min(median_df['alongtrack'])) & (Canopy['alongtrack'] < max(median_df['alongtrack'])))
             Canopy = Canopy.dropna()
-            f_interp1d = interp1d(median_df['alongtrack'], median_df['Photon_Height'], kind='cubic')
-            Canopy['Canopy_Height'] = Canopy['Photon_Height'] - f_interp1d(Canopy['alongtrack'])
-
+            f_interp1d = interp1d(median_df['alongtrack'], median_df['Ground_Height'], kind='cubic')
+            Canopy['Ground_interp_Height'] = f_interp1d(Canopy['alongtrack'])
+            Canopy['PreCanopy_Height'] = Canopy['Photon_Height'] - Canopy['Ground_interp_Height']
+            Canopy.drop(columns='Photon_Height', inplace=True)
+            #Canopy = Canopy.convert_dtypes()
             Canopy.to_hdf(os.path.join(ATL03_output_path,'ATL03_PreCanopy_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]),
                           key='PreCanopy_%s'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])
             print("saved to %s"%os.path.join(ATL03_output_path,'ATL03_PreCanopy_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]) )
@@ -219,26 +226,24 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
 def ATL03_canopy_and_top_of_canopy_photons(fname, ATL03_output_path, reprocess=False):
     """
     ATL03_canopy_and_top_of_canopy_photons(fname, ATL03_output_path, reprocess)
-
     Takes a ATL03_PreCanopy_* HDF file generated with ATL03_ground_preliminary_canopy_photons.
-
     Saves Canopy and Top-Of-Canopy (TOC) to a new hdf file.
 
     """
 
     print('Opening %s: '%os.path.basename(fname),end='')
     if reprocess==False and os.path.exists(os.path.join(ATL03_output_path,'ATL03_TOC_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])):
-        print('File %s already exists and reprocessing is turned off.'%(os.path.join(ATL03_output_path,'ATL03_TOC_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])))
+        print('File %s already exists and reprocessing is turned off.\n'%(os.path.join(ATL03_output_path,'ATL03_TOC_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])))
         return
     Canopy = pd.read_hdf(fname, mode='r')
 
-    Canopy = Canopy.where(Canopy['Canopy_Height']>=3)
+    Canopy = Canopy.where(Canopy['PreCanopy_Height']>=3)
     Canopy = Canopy.dropna()
 
     # Easting, Northing and Canopy Height scaling
     if len(Canopy)>5:
         df = Canopy
-        df['z'] = (df['Canopy_Height']-np.min(df['Canopy_Height']))/(np.max(df['Canopy_Height'])-np.min(df['Canopy_Height']))
+        df['z'] = (df['PreCanopy_Height']-np.min(df['PreCanopy_Height']))/(np.max(df['PreCanopy_Height'])-np.min(df['PreCanopy_Height']))
         df['x'] = (df['alongtrack']-np.min(df['alongtrack']))/(np.max(df['alongtrack'])-np.min(df['alongtrack']))
 
         X = np.array(df[['x', 'z']])
@@ -277,13 +282,14 @@ def ATL03_canopy_and_top_of_canopy_photons(fname, ATL03_output_path, reprocess=F
                 dff['Photons_Numb'] = len(dff)
             # Calculate the maximum photon height of each bin
                 if len(dff)>0:
-                    dd = dff.where(dff['Canopy_Height']==max(dff['Canopy_Height']))
+                    dd = dff.where(dff['PreCanopy_Height']==max(dff['PreCanopy_Height']))
                     dd = dd.dropna()
                     df_canop.append(dd)
             df_canop = [j for j in df_canop if len(j)>=0]
             if len(df_canop)>0:
                 toc = pd.concat(df_canop, axis=0)
-
+                toc.rename(columns={"PreCanopy_Height": "TOC_Height"}, inplace=True)
+                #toc = toc.convert_dtypes()
                 # Save the canopy and top of canopy photons into new hdf files
                 toc.to_hdf(os.path.join(ATL03_output_path,'ATL03_TOC_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]),
                           key='TOC_%s'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])
@@ -293,26 +299,24 @@ def ATL03_canopy_and_top_of_canopy_photons(fname, ATL03_output_path, reprocess=F
 def ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess=False):
     """
     ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess)
-
     Takes a ATL03_PreCanopy_* HDF file generated with ATL03_ground_preliminary_canopy_photons.
-
     Saves grass heights into a new HDF.
 
     """
     print('Opening %s: '%os.path.basename(fname),end='')
     if reprocess==False and os.path.exists(os.path.join(ATL03_output_path,'ATL03_GrassHeight_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])):
-        print('File %s already exists and reprocessing is turned off.'%(os.path.join(ATL03_output_path,'ATL03_GrassHeight_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])))
+        print('File %s already exists and reprocessing is turned off.\n'%(os.path.join(ATL03_output_path,'ATL03_GrassHeight_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])))
         return
     Canopy = pd.read_hdf(fname, mode='r')
 
     # All photons with canopy height between 0.5 m and 3 m
-    Canopy = Canopy.where((Canopy['Canopy_Height']>=0.5) & (Canopy['Canopy_Height']<3))
+    Canopy = Canopy.where((Canopy['PreCanopy_Height']>=0.5) & (Canopy['PreCanopy_Height']<3))
     Canopy = Canopy.dropna()
 
     # Easting, Northing and Canopy Height scaling
     if len(Canopy)>5:
         df = Canopy
-        df['z'] = (df['Canopy_Height']-np.min(df['Canopy_Height']))/(np.max(df['Canopy_Height'])-np.min(df['Canopy_Height']))
+        df['z'] = (df['PreCanopy_Height']-np.min(df['PreCanopy_Height']))/(np.max(df['PreCanopy_Height'])-np.min(df['PreCanopy_Height']))
         df['x'] = (df['alongtrack']-np.min(df['alongtrack']))/(np.max(df['alongtrack'])-np.min(df['alongtrack']))
 
         X = np.array(df[['x', 'z']])
@@ -349,13 +353,135 @@ def ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess=False):
                 dff = dff.dropna()
             # Calculate the maximum photon height of each bin
                 if len(dff)>0:
-                    dd = dff.where(dff['Canopy_Height']==max(dff['Canopy_Height']))
+                    dd = dff.where(dff['PreCanopy_Height']==max(dff['PreCanopy_Height']))
                     dd = dd.dropna()
                     df_canop.append(dd)
             df_canop = [j for j in df_canop if len(j)>=0]
             if len(df_canop)>0:
                 grassheight = pd.concat(df_canop, axis=0)
+                grassheight.rename(columns={"PreCanopy_Height": "Grass_Height"}, inplace=True)
+                #grassheight = grassheight.convert_dtypes()
                 # Save the grass height into new HDF files
                 grassheight.to_hdf(os.path.join(ATL03_output_path,'ATL03_GrassHeight_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]),                          key='GrassHeight_%s'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])
                 print('saved to %s'%os.path.join(ATL03_output_path,'ATL03_GrassHeight_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]))
         print()
+
+def getCoordRotFwd(xIn,yIn,R_mat,xRotPt,yRotPt,desiredAngle):
+    """ The functions below are used to calculate the along-track distance, the functions are the same used by
+    PhoREAL (Photon Research and Engineering Analysis Library) https://github.com/icesat-2UT/PhoREAL"""
+
+    # Get shape of input X,Y data
+    xInShape = np.shape(xIn)
+    yInShape = np.shape(yIn)
+
+    # If shape of arrays are (N,1), then make them (N,)
+    xIn = xIn.ravel()
+    yIn = yIn.ravel()
+
+    # Suppress warnings that may come from np.polyfit
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
+    # endif
+
+    # If Rmatrix, xRotPt, and yRotPt are empty, then compute them
+    if(len(R_mat)==0 and len(xRotPt)==0 and len(yRotPt)==0):
+
+        # Get current angle of linear fit data
+        x1 = xIn[0]
+        x2 = xIn[-1]
+        y1 = yIn[0]
+        y2 = yIn[-1]
+        # endif
+        deltaX = x2 - x1
+        deltaY = y2 - y1
+        theta = np.arctan2(deltaY,deltaX)
+
+        # Get angle to rotate through
+        phi = np.radians(desiredAngle) - theta
+
+        # Get rotation matrix
+        R_mat = np.matrix(np.array([[np.cos(phi), -np.sin(phi)],[np.sin(phi), np.cos(phi)]]))
+
+        # Get X,Y rotation points
+        xRotPt = x1
+        yRotPt = y1
+
+    else:
+
+        # Get angle to rotate through
+        phi = np.arccos(R_mat[0,0])
+
+    # endif
+
+    # Translate data to X,Y rotation point
+    xTranslated = xIn - xRotPt
+    yTranslated = yIn - yRotPt
+
+    # Convert np array to np matrix
+    xTranslated_mat = np.matrix(xTranslated)
+    yTranslated_mat = np.matrix(yTranslated)
+
+    # Get shape of np X,Y matrices
+    (xTranslated_matRows,xTranslated_matCols) = xTranslated_mat.shape
+    (yTranslated_matRows,yTranslated_matCols) = yTranslated_mat.shape
+
+    # Make X input a row vector
+    if(xTranslated_matRows > 1):
+        xTranslated_mat = np.transpose(xTranslated_mat)
+    #endif
+
+    # Make Y input a row vector
+    if(yTranslated_matRows > 1):
+        yTranslated_mat = np.transpose(yTranslated_mat)
+    #endif
+
+    # Put X,Y data into separate rows of matrix
+    xyTranslated_mat = np.concatenate((xTranslated_mat,yTranslated_mat))
+
+    # Compute matrix multiplication to get rotated frame
+    measRot_mat = np.matmul(R_mat,xyTranslated_mat)
+
+    # Pull out X,Y rotated data
+    xRot_mat = measRot_mat[0,:]
+    yRot_mat = measRot_mat[1,:]
+
+    # Convert X,Y matrices back to np arrays for output
+    xRot = np.array(xRot_mat)
+    yRot = np.array(yRot_mat)
+
+    # Make X,Y rotated output the same shape as X,Y input
+    xRot = np.reshape(xRot,xInShape)
+    yRot = np.reshape(yRot,yInShape)
+
+    # Reset warnings
+    warnings.resetwarnings()
+
+    # Return outputs
+    return xRot, yRot, R_mat, xRotPt, yRotPt, phi
+
+class AtlRotationStruct:
+
+    # Define class with designated fields
+    def __init__(self, R_mat, xRotPt, yRotPt, desiredAngle, phi):
+
+        self.R_mat = R_mat
+        self.xRotPt = xRotPt
+        self.yRotPt = yRotPt
+        self.desiredAngle = desiredAngle
+        self.phi = phi
+
+def get_atl_alongtrack(df):
+    """Function to calculate the along-track distance"""
+    easting = np.array(df['Easting'])
+    northing = np.array(df['Northing'])
+
+    desiredAngle = 90
+    crossTrack, alongTrack, R_mat, xRotPt, yRotPt, phi = \
+    getCoordRotFwd(easting, northing, [], [], [], desiredAngle)
+
+    df = pd.concat([df,pd.DataFrame(crossTrack, columns=['crosstrack'])],axis=1)
+    df = pd.concat([df,pd.DataFrame(alongTrack, columns=['alongtrack'])],axis=1)
+
+    rotation_data = AtlRotationStruct(R_mat, xRotPt, yRotPt, desiredAngle, phi)
+
+    return df, rotation_data
