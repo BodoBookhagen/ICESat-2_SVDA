@@ -22,7 +22,7 @@ conda create -y -n icesat2 -c conda-forge ipython numpy python \
   jupyter ipywidgets gdal tqdm scikit-learn weightedstats \
   geopandas cartopy plotly
 conda activate icesat2
-conda install -y -c conda-forge tables laspy requests
+conda install -y -c conda-forge pytables laspy requests
 ```
 
 Some of these modules are not required for running the code (for example, `cartopy` and `plotly`), but they are useful when interactively exploring the data.
