@@ -11,7 +11,7 @@ from scipy import signal
 from math import tan, pi
 import scipy.spatial as spatial
 
-from SVDA_functions import *
+from SVDA_helper_functions import *
 
 def ATL03_signal_photons(fname, ATL03_output_path, ROI_fname, EPSG_Code, reprocess=False):
     """
