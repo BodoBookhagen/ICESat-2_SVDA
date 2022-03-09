@@ -30,7 +30,7 @@ def ATL03_signal_photons(fname, ATL03_output_path, ROI_fname, EPSG_Code, reproce
     The function extracts along-track distances,
     converts latitude and longitude to local UTM coordinates,
     filters out land values within the geographic area <ROI_fname>,
-    usually a shapefile in EPSG:4326 coordinates and writes these
+    usually a shapefile in EPSG:4326 coordinates, and writes these
     to a compressed HDF file in <ATL03_output_path> starting with 'Land_'
     and the date and time of the beam.
 
@@ -156,7 +156,7 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
 
         # Retrieving photons between the 25th and the 75th percentiles
         if len(df)>5:
-            df_grd = df.where((df['Photon_Height'] <= np.percentile(df['Photon_Height'],75)) & (df['Photon_Height'] > np.percentile(df['Photon_Height'],25)))
+            df_grd = df.where((df['Photon_Height'] <= np.nanpercentile(df['Photon_Height'],75)) & (df['Photon_Height'] > np.nanpercentile(df['Photon_Height'],25)))
             df_grd = df_grd.dropna()
 
             #Topography detrend and outliers filtering
@@ -176,7 +176,7 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
     if len(canop)>0:
         Canopy = pd.concat(canop, axis=0)
 
-    latitude, longitude, along,cross, med, north, east = ([] for i in range(7))
+    latitude, longitude, along, cross, med, north, east = ([] for i in range(7))
 
     ground_ph = [j for j in ground_ph if len(j)!=0]
 
@@ -194,7 +194,7 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
         latitude.append(lat)
         lon = (max(df['Longitude']) + min(df['Longitude']))/2
         longitude.append(lon)
-        m = np.median(df['Photon_Height'])
+        m = np.nanmedian(df['Photon_Height'])
         med.append(m)
 
     # Ground photons dataframe
@@ -203,7 +203,7 @@ def ATL03_ground_preliminary_canopy_photons(fname, ATL03_output_path, reprocess=
     #median_df = median_df.convert_dtypes()
 
     # Saving the final ground photons into hdf file
-    if len(median_df) >5:
+    if len(median_df) > 5:
         median_df.to_hdf(os.path.join(ATL03_output_path,'ATL03_Ground_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]),
                          key='Ground_%s'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4])
         print("saved to %s"%os.path.join(ATL03_output_path,'ATL03_Ground_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]) )
@@ -243,8 +243,8 @@ def ATL03_canopy_and_top_of_canopy_photons(fname, ATL03_output_path, reprocess=F
     # Easting, Northing and Canopy Height scaling
     if len(Canopy)>5:
         df = Canopy
-        df['z'] = (df['PreCanopy_Height']-np.min(df['PreCanopy_Height']))/(np.max(df['PreCanopy_Height'])-np.min(df['PreCanopy_Height']))
-        df['x'] = (df['alongtrack']-np.min(df['alongtrack']))/(np.max(df['alongtrack'])-np.min(df['alongtrack']))
+        df['z'] = (df['PreCanopy_Height']-np.nanmin(df['PreCanopy_Height']))/(np.nanmax(df['PreCanopy_Height'])-np.min(df['PreCanopy_Height']))
+        df['x'] = (df['alongtrack']-np.nanmin(df['alongtrack']))/(np.nanmax(df['alongtrack'])-np.nanmin(df['alongtrack']))
 
         X = np.array(df[['x', 'z']])
         T = spatial.cKDTree(X)
@@ -316,8 +316,8 @@ def ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess=False):
     # Easting, Northing and Canopy Height scaling
     if len(Canopy)>5:
         df = Canopy
-        df['z'] = (df['PreCanopy_Height']-np.min(df['PreCanopy_Height']))/(np.max(df['PreCanopy_Height'])-np.min(df['PreCanopy_Height']))
-        df['x'] = (df['alongtrack']-np.min(df['alongtrack']))/(np.max(df['alongtrack'])-np.min(df['alongtrack']))
+        df['z'] = (df['PreCanopy_Height']-np.nanmin(df['PreCanopy_Height']))/(np.nanmax(df['PreCanopy_Height'])-np.min(df['PreCanopy_Height']))
+        df['x'] = (df['alongtrack']-np.nanmin(df['alongtrack']))/(np.nanmax(df['alongtrack'])-np.min(df['alongtrack']))
 
         X = np.array(df[['x', 'z']])
         T = spatial.cKDTree(X)
@@ -353,7 +353,7 @@ def ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess=False):
                 dff = dff.dropna()
             # Calculate the maximum photon height of each bin
                 if len(dff)>0:
-                    dd = dff.where(dff['PreCanopy_Height']==max(dff['PreCanopy_Height']))
+                    dd = dff.where(dff['PreCanopy_Height'] == max(dff['PreCanopy_Height']))
                     dd = dd.dropna()
                     df_canop.append(dd)
             df_canop = [j for j in df_canop if len(j)>=0]
@@ -410,8 +410,6 @@ def getCoordRotFwd(xIn,yIn,R_mat,xRotPt,yRotPt,desiredAngle):
 
         # Get angle to rotate through
         phi = np.arccos(R_mat[0,0])
-
-    # endif
 
     # Translate data to X,Y rotation point
     xTranslated = xIn - xRotPt

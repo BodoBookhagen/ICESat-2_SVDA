@@ -4,7 +4,6 @@ import numpy as np
 import datetime, sys, warnings
 from pyproj import Transformer
 
-
 def jdtodatestd (jdate):
     """Convert Julian date to calendar date"""
     fmt = '%Y%j%'
@@ -18,13 +17,12 @@ def to_gdf(df, dst_crs=32733):
     df = gp.GeoDataFrame(df)
     df = df.drop(columns=['Latitude','Longitude'])
     df.set_crs(epsg=4326, inplace=True)
-    df =df.to_crs(epsg=dst_crs)
+    df = df.to_crs(epsg=dst_crs)
     return df
-
 
 # Functions to calculate the histograms
 def canop_hist(df):
-    """Canopy height and elevation diffrences distributions"""
+    """Canopy height and elevation difference distributions"""
     elev_bins = np.arange(-30, 30, 0.25)
     bins, bins_edges = np.histogram(df, elev_bins)
     bins_centers = bins_edges[:-1] + np.diff(bins_edges)/2
@@ -76,8 +74,7 @@ def KDE_plot(ddf, wdf):
     return x1,x2, y1,y2, ff1, ff2
 
 def GetExtent(ds):
-    """Read Geotiff to numpy array and get the extend of the geotiff"""
-    """ Return list of corner coordinates from a gdal Dataset """
+    """Get extent of an input GDAL Dataset and return a list of corner coordinates"""
     xmin, xpixel, _, ymax, _, ypixel = ds.GetGeoTransform()
     width, height = ds.RasterXSize, ds.RasterYSize
     xmax = xmin + width * xpixel
