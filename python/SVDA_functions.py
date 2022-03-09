@@ -12,7 +12,6 @@ from math import tan, pi
 import scipy.spatial as spatial
 
 from SVDA_functions import *
-#from sklearn.preprocessing import StandardScaler
 
 def ATL03_signal_photons(fname, ATL03_output_path, ROI_fname, EPSG_Code, reprocess=False):
     """
@@ -296,7 +295,7 @@ def ATL03_canopy_and_top_of_canopy_photons(fname, ATL03_output_path, reprocess=F
                 print('saved to %s'%os.path.join(ATL03_output_path,'ATL03_TOC_%s.hdf'%'_'.join(os.path.basename(fname).split('_')[2::])[:-4]))
     print()
 
-def ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess=False):
+def ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess=False, NN_neighbors=6):
     """
     ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess)
     Takes a ATL03_PreCanopy_* HDF file generated with ATL03_ground_preliminary_canopy_photons.
@@ -329,7 +328,7 @@ def ATL03_GrassHeight_photons(fname, ATL03_output_path, reprocess=False):
         df['NN'] = index
 
         # Filtering out canopy photons with number of neighbors below the 15th percentile of the number of neighbors
-        ddf = df.where(df['NN'] >=6)
+        ddf = df.where(df['NN'] >= NN_neighbors)
         ddf = ddf.dropna()
 
         # Binning the along-track direction (bins of 10 m)

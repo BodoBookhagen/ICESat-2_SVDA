@@ -3,7 +3,6 @@ import geopandas as gp
 import numpy as np
 import datetime, sys, warnings
 from pyproj import Transformer
-import weightedstats as ws
 
 def jdtodatestd (jdate):
     """Convert Julian date to calendar date"""
